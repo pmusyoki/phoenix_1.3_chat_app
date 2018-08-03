@@ -7,6 +7,15 @@
     overflow: scroll;
     margin-bottom: 30px;
 }
+
+#message {
+    background-color: azure;
+}
+
+#date-time {
+    float: right;
+    color: #fefefe;
+}
 /* Includes Bootstrap as well as some default style for the starter
  * application. This can be safely deleted to start fresh.
  */
@@ -83,6 +92,15 @@ body, form, ul, table {
   .jumbotron {
     border-bottom: 0;
   }
+}
+
+#message {
+  background-color: azure;
+}
+
+#date-time {
+  float: right;
+  color: #fefefe;
 }
 
 /*# sourceMappingURL=app.css.map*/

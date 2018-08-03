@@ -20,19 +20,21 @@ let channel = socket.channel('chat_room:lobby', {});
 let list = $('#message-list');
 let message = $('#msg');
 let name = $('#name');
+let inserted_at = new Date();
 
 message.on('keypress', event => {
     if (event.keyCode == 13) {
         channel.push('shout', {
             name: name.val(),
-            message: message.val()
+            message: message.val(),
+            inserted_at: inserted_at
         });
         message.val('');
     }
 });
 
 channel.on('shout', payload => {
-    list.append(`<b>${payload.name || 'new_user'}:</b> ${payload.message}<br>`);
+    list.append(`<div class="message">${payload.name || 'new_user'}:</b> ${payload.message}<span class="date_time"> ${payload.inserted_at || DateTime.utc_now} </span></div><br>`);
     list.prop({
         scrollTop: list.prop('scrollHeight')
     });

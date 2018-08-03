@@ -75,3 +75,12 @@ body, form, ul, table {
     border-bottom: 0;
   }
 }
+
+#message {
+  background-color: azure;
+}
+
+#date-time {
+  float: right;
+  color: #fefefe;
+}

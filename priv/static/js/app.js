@@ -1666,19 +1666,21 @@ var channel = _socket2.default.channel('chat_room:lobby', {});
 var list = $('#message-list');
 var message = $('#msg');
 var name = $('#name');
+var inserted_at = new Date();
 
 message.on('keypress', function (event) {
     if (event.keyCode == 13) {
         channel.push('shout', {
             name: name.val(),
-            message: message.val()
+            message: message.val(),
+            inserted_at: inserted_at
         });
         message.val('');
     }
 });
 
 channel.on('shout', function (payload) {
-    list.append("<b>" + (payload.name || 'new_user') + ":</b> " + payload.message + "<br>");
+    list.append("<div class=\"message\">" + (payload.name || 'new_user') + ":</b> " + payload.message + "<span class=\"date_time\"> " + (payload.inserted_at || DateTime.utc_now) + " </span></div><br>");
     list.prop({
         scrollTop: list.prop('scrollHeight')
     });

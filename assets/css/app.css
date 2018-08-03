@@ -7,3 +7,12 @@
     overflow: scroll;
     margin-bottom: 30px;
 }
+
+#message {
+    background-color: azure;
+}
+
+#date-time {
+    float: right;
+    color: #fefefe;
+}

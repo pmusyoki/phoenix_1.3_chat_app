@@ -25,11 +25,12 @@ defmodule ChatWeb.ChatRoomChannel do
   end
 
   def handle_info(:after_join, socket) do
-    Chat.Message.get_msgs() 
+    Chat.Message.get_msgs()
     |> Enum.each(fn msg -> push(socket, "shout",
       %{
         name: msg.name,
         message: msg.message,
+        inserted_at: msg.inserted_at
       }) end)
     {:noreply, socket}
   end
@@ -37,7 +38,7 @@ defmodule ChatWeb.ChatRoomChannel do
   # Add authorization logic here as required.
 
   defp save_msg(msg) do
-    Chat.Message.changeset(%Chat.Message{}, msg) |> Chat.Repo.insert  
+    Chat.Message.changeset(%Chat.Message{}, msg) |> Chat.Repo.insert
   end
 
   defp authorized?(_payload) do
