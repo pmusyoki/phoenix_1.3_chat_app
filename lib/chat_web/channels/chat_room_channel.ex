@@ -41,6 +41,7 @@ defmodule ChatWeb.ChatRoomChannel do
   # Add authorization logic here as required.
 
   defp save_msg(msg) do
+    IO.puts "Hello there..."
     Chat.Message.changeset(%Chat.Message{}, msg) |> Chat.Repo.insert
   end
 
