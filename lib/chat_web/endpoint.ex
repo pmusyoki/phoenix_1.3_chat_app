@@ -41,6 +41,7 @@ defmodule ChatWeb.Endpoint do
   plug ChatWeb.Router
 
   @doc """
+
   Callback invoked for dynamically configuring the endpoint.
 
   It receives the endpoint configuration and checks if

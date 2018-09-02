@@ -20,6 +20,9 @@ defmodule ChatWeb.ChatRoomChannel do
   # broadcast to everyone in the current topic (chat_room:lobby).
   def handle_in("shout", payload, socket) do
     spawn(fn -> save_msg(payload) end)
+
+    #n = RateLimiter.log("user1")
+    #IO.puts "Value of Regs is #{n} --------------------------------------------------------------------"
     broadcast socket, "shout", payload
     {:noreply, socket}
   end
@@ -30,7 +33,7 @@ defmodule ChatWeb.ChatRoomChannel do
       %{
         name: msg.name,
         message: msg.message,
-        inserted_at: msg.inserted_at
+        published_at: msg.published_at
       }) end)
     {:noreply, socket}
   end

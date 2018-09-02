@@ -5,8 +5,8 @@
               {description,"chat"},
               {modules,['Elixir.Chat','Elixir.Chat.Application',
                         'Elixir.Chat.DataCase','Elixir.Chat.Message',
-                        'Elixir.Chat.Repo','Elixir.ChatWeb',
-                        'Elixir.ChatWeb.ChannelCase',
+                        'Elixir.Chat.Repo','Elixir.Chat.Room',
+                        'Elixir.ChatWeb','Elixir.ChatWeb.ChannelCase',
                         'Elixir.ChatWeb.ChatRoomChannel',
                         'Elixir.ChatWeb.ConnCase','Elixir.ChatWeb.Endpoint',
                         'Elixir.ChatWeb.ErrorHelpers',
@@ -15,8 +15,7 @@
                         'Elixir.ChatWeb.PageController',
                         'Elixir.ChatWeb.PageView','Elixir.ChatWeb.Router',
                         'Elixir.ChatWeb.Router.Helpers',
-                        'Elixir.ChatWeb.UserSocket']},
+                        'Elixir.ChatWeb.UserSocket','Elixir.RateLimiter']},
               {registered,[]},
               {vsn,"0.0.1"},
-              {mod,{'Elixir.Chat.Application',[]}},
-              {extra_applications,[logger,runtime_tools]}]}.
+              {mod,{'Elixir.Chat.Application',[]}}]}.

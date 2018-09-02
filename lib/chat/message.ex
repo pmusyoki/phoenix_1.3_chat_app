@@ -6,6 +6,7 @@ defmodule Chat.Message do
   schema "messages" do
     field :message, :string
     field :name, :string
+    field :published_at, :string
 
     timestamps()
   end
@@ -13,8 +14,8 @@ defmodule Chat.Message do
   @doc false
   def changeset(%Message{} = message, attrs) do
     message
-    |> cast(attrs, [:name, :message])
-    |> validate_required([:name, :message])
+    |> cast(attrs, [:name, :message, :published_at])
+    |> validate_required([:name, :message, :published_at])
   end
 
   def get_msgs(limit \\ 20) do

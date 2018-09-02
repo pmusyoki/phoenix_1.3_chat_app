@@ -17,6 +17,13 @@ defmodule ChatWeb.Router do
     pipe_through :browser # Use the default browser stack
 
     get "/", PageController, :index
+    get "/messages", PageController, only: [:messages]
+  end
+
+  scope "/api", ChatWeb do
+    pipe_through :browser
+    #get "/", PageController, :index
+    resources "/", PageController, only: [:messages]
   end
 
   # Other scopes may use custom stacks.

@@ -1666,21 +1666,21 @@ var channel = _socket2.default.channel('chat_room:lobby', {});
 var list = $('#message-list');
 var message = $('#msg');
 var name = $('#name');
-var inserted_at = new Date();
+var inserted_at = srvTime();
 
 message.on('keypress', function (event) {
     if (event.keyCode == 13) {
         channel.push('shout', {
             name: name.val(),
             message: message.val(),
-            inserted_at: inserted_at
+            published_at: inserted_at
         });
         message.val('');
     }
 });
 
 channel.on('shout', function (payload) {
-    list.append("<div class=\"message\">" + (payload.name || 'new_user') + ":</b> " + payload.message + "<span class=\"date_time\"> " + (payload.inserted_at || DateTime.utc_now) + " </span></div><br>");
+    list.append("<div class=\"message\">" + (payload.name || 'new_user') + ":</b> " + payload.message + "<span class=\"date_time\"> " + payload.published_at + " </span></div><br>");
     list.prop({
         scrollTop: list.prop('scrollHeight')
     });
@@ -1691,6 +1691,33 @@ channel.join().receive('ok', function (resp) {
 }).receive('error', function (resp) {
     console.log('Unable to join', resp);
 });
+
+var xmlHttp;
+function srvTime() {
+    try {
+        //FF, Opera, Safari, Chrome
+        xmlHttp = new XMLHttpRequest();
+    } catch (err1) {
+        //IE
+        try {
+            xmlHttp = new ActiveXObject('Msxml2.XMLHTTP');
+        } catch (err2) {
+            try {
+                xmlHttp = new ActiveXObject('Microsoft.XMLHTTP');
+            } catch (eerr3) {
+                //AJAX not supported, use CPU time.
+                alert("AJAX not supported");
+            }
+        }
+    }
+    xmlHttp.open('HEAD', window.location.href.toString(), false);
+    xmlHttp.setRequestHeader("Content-Type", "text/html");
+    xmlHttp.send('');
+    return xmlHttp.getResponseHeader("Date");
+}
+
+var st = srvTime();
+var date = new Date(st);
 
 });
 
