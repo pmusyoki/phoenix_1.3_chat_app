@@ -1784,7 +1784,7 @@ var socket = new _phoenix.Socket("/socket", { params: { token: window.userToken 
 socket.connect();
 
 // Now that you are connected, you can join channels with a topic:
-var channel = socket.channel("topic:subtopic", {});
+var channel = socket.channel("chat_room:lobby", {});
 channel.join().receive("ok", function (resp) {
   console.log("Joined successfully", resp);
 }).receive("error", function (resp) {
