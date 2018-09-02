@@ -6,7 +6,7 @@ defmodule Chat.Message do
   schema "messages" do
     field :message, :string
     field :name, :string
-    field :published_at, :datetime
+    field :published_at, :naive_datetime
 
     timestamps()
   end
