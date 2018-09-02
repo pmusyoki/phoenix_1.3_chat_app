@@ -1,6 +1,6 @@
 use Mix.Config
 
-config :chatter, ChatWeb.Endpoint,
+config :chat, ChatWeb.Endpoint,
   load_from_system_env: true,
   url: [scheme: "https", host: "wolf-chat.herokuapp.com", port: 443], force_ssl: [rewrite_on: [:x_forwarded_proto]],
   cache_static_manifest: "priv/static/cache_manifest.json",
