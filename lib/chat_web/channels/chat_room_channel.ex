@@ -42,6 +42,7 @@ defmodule ChatWeb.ChatRoomChannel do
 
   defp save_msg(msg) do
     IO.puts "Hello there..."
+    IO.inspect msg
     Chat.Message.changeset(%Chat.Message{}, msg) |> Chat.Repo.insert
   end
 
