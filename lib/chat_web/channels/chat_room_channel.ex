@@ -41,9 +41,8 @@ defmodule ChatWeb.ChatRoomChannel do
   # Add authorization logic here as required.
 
   defp save_msg(msg) do
-    IO.puts "Hello there..."
-    IO.inspect msg
-    Chat.Message.changeset(%Chat.Message{}, msg) |> Chat.Repo.insert
+    msg = Map.put(msg, "published_at", DateTime.utc_now())
+    Chat.Message.changeset(%Chat.Message{}, msg) |> Chat.Repo.insert()
   end
 
   defp authorized?(_payload) do

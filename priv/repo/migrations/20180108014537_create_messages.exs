@@ -5,7 +5,7 @@ defmodule Chat.Repo.Migrations.CreateMessages do
     create table(:messages) do
       add :name, :string
       add :message, :string
-      add :published_at, :datetime
+      add :published_at, :naive_datetime
 
       timestamps()
     end
