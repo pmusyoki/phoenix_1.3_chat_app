@@ -131,7 +131,22 @@ defmodule DBConnection.Connection do
     %{mod: mod, opts: opts, backoff: backoff, after_connect: after_connect,
       idle: idle, idle_timeout: idle_timeout, regulator: regulator,
       lock: lock} = s
-    case apply(mod, :connect, [opts]) do
+    try do
+      apply(mod, :connect, [connect_opts(opts)])
+    rescue e ->
+      stack =
+        case System.stacktrace() do
+          [{_, _, arity, _} | _rest] = stacktrace when is_integer(arity) -> stacktrace
+          [{a, b, params, c} | rest] when is_list(params) ->
+            [{a, b, length(params), c} | rest]
+        end
+      msg = """
+      Connect raised a #{inspect e.__struct__} error. The exception details are hidden, as
+      they may contain sensitive data such as database credentials.
+      """
+
+      reraise RuntimeError.exception(msg), stack
+    else
       {:ok, state} when after_connect != nil ->
         ref = make_ref()
         Connection.cast(self(), {:after_connect, ref})
@@ -412,6 +427,17 @@ defmodule DBConnection.Connection do
   end
   defp start_opts(mode, opts) when mode in [:poolboy, :sojourn] do
     Keyword.take(opts, [:debug, :spawn_opt])
+  end
+
+  defp connect_opts(opts) do
+    case Keyword.get(opts, :configure) do
+      {mod, fun, args} ->
+        apply(mod, fun, [opts | args])
+      fun when is_function(fun, 1) ->
+        fun.(opts)
+      nil ->
+        opts
+    end
   end
 
   defp cancel(pool, ref) do
