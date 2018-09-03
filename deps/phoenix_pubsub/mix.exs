@@ -5,8 +5,8 @@ defmodule Phoenix.PubSub.Mixfile do
 
   def project do
     [app: :phoenix_pubsub,
-     version: "1.0.2",
-     elixir: "~> 1.2",
+     version: "1.1.0",
+     elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      elixirc_paths: elixirc_paths(Mix.env),
@@ -29,7 +29,6 @@ defmodule Phoenix.PubSub.Mixfile do
 
   defp deps do
     [{:dialyze, "~> 0.2.0", only: :dev},
-     {:earmark, ">= 0.0.0", only: :dev},
      {:ex_doc, ">= 0.0.0", only: :dev}]
   end
 

@@ -13,6 +13,7 @@
                         'Elixir.Phoenix.Tracker.Clock',
                         'Elixir.Phoenix.Tracker.DeltaGeneration',
                         'Elixir.Phoenix.Tracker.Replica',
+                        'Elixir.Phoenix.Tracker.Shard',
                         'Elixir.Phoenix.Tracker.State']},
               {registered,[]},
               {vsn,"1.0.2"},

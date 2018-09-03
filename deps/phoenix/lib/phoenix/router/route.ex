@@ -10,6 +10,7 @@ defmodule Phoenix.Router.Route do
   The `Phoenix.Router.Route` struct. It stores:
 
     * :verb - the HTTP verb as an upcased string
+    * :line - the line the route was defined
     * :kind - the kind of route, one of `:match`, `:forward`
     * :path - the normalized path as string
     * :host - the request host or host prefix
@@ -22,7 +23,7 @@ defmodule Phoenix.Router.Route do
 
   """
 
-  defstruct [:verb, :kind, :path, :host, :plug, :opts,
+  defstruct [:verb, :line, :kind, :path, :host, :plug, :opts,
              :helper, :private, :pipe_through, :assigns]
 
   @type t :: %Route{}
@@ -31,8 +32,8 @@ defmodule Phoenix.Router.Route do
   Receives the verb, path, plug, options and helper
   and returns a `Phoenix.Router.Route` struct.
   """
-  @spec build(:match | :forward, String.t, String.t, String.t | nil, atom, atom, atom | nil, atom, %{}, %{}) :: t
-  def build(kind, verb, path, host, plug, opts, helper, pipe_through, private, assigns)
+  @spec build(non_neg_integer, :match | :forward, String.t, String.t, String.t | nil, atom, atom, atom | nil, atom, %{}, %{}) :: t
+  def build(line, kind, verb, path, host, plug, opts, helper, pipe_through, private, assigns)
       when is_atom(verb) and (is_binary(host) or is_nil(host)) and
            is_atom(plug) and (is_binary(helper) or is_nil(helper)) and
            is_list(pipe_through) and is_map(private) and is_map(assigns)
@@ -40,20 +41,23 @@ defmodule Phoenix.Router.Route do
 
     %Route{kind: kind, verb: verb, path: path, host: host, private: private,
            plug: plug, opts: opts, helper: helper,
-           pipe_through: pipe_through, assigns: assigns}
+           pipe_through: pipe_through, assigns: assigns, line: line}
   end
 
   @doc """
-  Builds the expressions used by the route.
+  Builds the compiled expressions used by the route.
   """
   def exprs(route) do
     {path, binding} = build_path_and_binding(route)
 
-    %{path: path,
+    %{
+      path: path,
       host: build_host(route.host),
       verb_match: verb_match(route.verb),
       binding: binding,
-      route_match: build_route_match(route, binding)}
+      prepare: build_prepare(route, binding),
+      dispatch: build_dispatch(route)
+    }
   end
 
   defp verb_match(:*), do: Macro.var(:_verb, nil)
@@ -80,17 +84,14 @@ defmodule Phoenix.Router.Route do
     end
   end
 
-  defp build_route_match(route, binding) do
-    dispatch_block = build_dispatch(route)
-    pipes_block = build_pipes(route)
-    exprs =
-      [build_params(binding),
-       maybe_merge(:private, route.private),
-       maybe_merge(:assigns, route.assigns)]
+  defp build_prepare(route, binding) do
+    exprs = [
+      build_params(binding),
+      maybe_merge(:private, route.private),
+      maybe_merge(:assigns, route.assigns)
+    ]
 
-    conn_block = {:__block__, [], Enum.filter(exprs, & &1 != nil)}
-
-    {conn_block, pipes_block, dispatch_block}
+    {:__block__, [], Enum.filter(exprs, & &1 != nil)}
   end
 
   defp build_dispatch(%Route{kind: :forward} = route) do
@@ -136,30 +137,15 @@ defmodule Phoenix.Router.Route do
     end
   end
 
-  defp build_pipes(%Route{pipe_through: []}) do
-    quote do: fn conn -> conn end
-  end
-  defp build_pipes(%Route{pipe_through: pipe_through}) do
-    plugs = pipe_through |> Enum.reverse |> Enum.map(&{&1, [], true})
-    {conn, body} = Plug.Builder.compile(__ENV__, plugs, [])
-
-    quote do
-      fn unquote(conn) ->
-        unquote(conn) = Plug.Conn.put_private(unquote(conn), :phoenix_pipelines, unquote(pipe_through))
-        unquote(body)
-      end
-    end
-  end
-
-
   @doc """
   Forwards requests to another Plug at a new path.
   """
   def forward(%Plug.Conn{path_info: path, script_name: script} = conn, fwd_segments, target, opts) do
     new_path = path -- fwd_segments
     {base, ^new_path} = Enum.split(path, length(path) - length(new_path))
-    conn = %{conn | path_info: new_path, script_name: script ++ base} |> target.call(opts)
-    %{conn | path_info: path, script_name: script}
+
+    conn = %Plug.Conn{conn | path_info: new_path, script_name: script ++ base} |> target.call(opts)
+    %Plug.Conn{conn | path_info: path, script_name: script}
   end
 
   @doc """

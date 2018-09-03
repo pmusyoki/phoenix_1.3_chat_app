@@ -1,12 +1,12 @@
 # Plug
 
 [![Build Status](https://travis-ci.org/elixir-plug/plug.svg?branch=master)](https://travis-ci.org/elixir-plug/plug)
-[![Inline docs](http://inch-ci.org/github/elixir-plug/plug.svg?branch=master)](http://inch-ci.org/github/elixir-plug/plug)
+[![Inline docs](https://inch-ci.org/github/elixir-plug/plug.svg?branch=master)](http://inch-ci.org/github/elixir-plug/plug)
 
 Plug is:
 
-1. A specification for composable modules between web applications
-2. Connection adapters for different web servers in the Erlang VM
+  1. A specification for composable modules between web applications
+  2. Connection adapters for different web servers in the Erlang VM
 
 [Documentation for Plug is available online](http://hexdocs.pm/plug/).
 
@@ -35,7 +35,7 @@ The snippet above shows a very simple example on how to use Plug. Save that snip
     $ iex -S mix
     iex> c "path/to/file.ex"
     [MyPlug]
-    iex> {:ok, _} = Plug.Adapters.Cowboy.http MyPlug, []
+    iex> {:ok, _} = Plug.Adapters.Cowboy2.http MyPlug, []
     {:ok, #PID<...>}
 
 Access "http://localhost:4000/" and we are done! For now, we have directly started the server in our terminal but, for production deployments, you likely want to start it in your supervision tree. See the "Supervised handlers" section below.
@@ -48,8 +48,10 @@ You can use plug in your projects in two steps:
 
     ```elixir
     def deps do
-      [{:cowboy, "~> 1.0.0"},
-       {:plug, "~> 1.0"}]
+      [
+        {:cowboy, "~> 2.0"},
+        {:plug, "~> 1.0"}
+      ]
     end
     ```
 
@@ -65,13 +67,15 @@ You can use plug in your projects in two steps:
 
 | Branch | Support                  |
 | ------ | ------------------------ |
-| v1.4   | Bug fixes                |
+| v1.6   | Bug fixes                |
+| v1.5   | Security patches only    |
+| v1.4   | Security patches only    |
 | v1.3   | Security patches only    |
-| v1.2   | Security patches only    |
-| v1.1   | Security patches only    |
+| v1.2   | Unsupported from 06/2018 |
+| v1.1   | Unsupported from 01/2018 |
 | v1.0   | Unsupported from 05/2017 |
 
-## The Plug.Conn
+## The `Plug.Conn` struct
 
 In the hello world example, we defined our first plug. What is a plug after all?
 
@@ -114,9 +118,9 @@ conn
 
 Finally, keep in mind that a connection is a **direct interface to the underlying web server**. When you call `send_resp/3` above, it will immediately send the given status and body back to the client. This makes features like streaming a breeze to work with.
 
-## The Plug Router
+## `Plug.Router`
 
-In practice, developers rarely write their own plugs. For example, Plug ships with a router that allows developers to quickly match on incoming requests and perform some action:
+To write a "router" plug that dispatches based on the path and method of incoming requests, Plug provides `Plug.Router`:
 
 ```elixir
 defmodule MyRouter do
@@ -137,7 +141,7 @@ defmodule MyRouter do
 end
 ```
 
-The router is a plug and, not only that, it contains its own plug pipeline too. The example above says that when the router is invoked, it will invoke the `:match` plug, represented by a local `match/2` function, and then call the `:dispatch` plug which will execute the matched code.
+The router is a plug. Not only that: it contains its own plug pipeline too. The example above says that when the router is invoked, it will invoke the `:match` plug, represented by a local (imported) `match/2` function, and then call the `:dispatch` plug which will execute the matched code.
 
 Plug ships with many plugs that you can add to the router plug pipeline, allowing you to plug something before a route matches or before a route is dispatched to. For example, if you want to add logging to the router, just do:
 
@@ -149,13 +153,13 @@ plug :dispatch
 
 Note `Plug.Router` compiles all of your routes into a single function and relies on the Erlang VM to optimize the underlying routes into a tree lookup, instead of a linear lookup that would instead match route-per-route. This means route lookups are extremely fast in Plug!
 
-This also means that a catch all `match` is recommended to be defined, as in the example above, otherwise routing fails with a function clause error (as it would in any regular Elixir function).
+This also means that a catch all `match` block is recommended to be defined as in the example above, otherwise routing fails with a function clause error (as it would in any regular Elixir function).
 
-Each route needs to return the connection as per the Plug specification. See `Plug.Router` docs for more information.
+Each route needs to return the connection as per the Plug specification. See the `Plug.Router` docs for more information.
 
 ## Supervised handlers
 
-On a production system, you likely want to start your Plug application under your application's supervision tree. Plug provides the `child_spec/3` function to do just that. Start a new Elixir project with the `--sup` flag:
+On a production system, you likely want to start your Plug pipeline under your application's supervision tree. Plug provides the `child_spec/3` function to do just that. Start a new Elixir project with the `--sup` flag:
 
 ```elixir
 $ mix new my_app --sup
@@ -170,11 +174,9 @@ defmodule MyApp do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   def start(_type, _args) do
-    import Supervisor.Spec
-
     children = [
       # Define workers and child supervisors to be supervised
-      Plug.Adapters.Cowboy.child_spec(:http, MyRouter, [], [port: 4001])
+      Plug.Adapters.Cowboy2.child_spec(scheme: :http, plug: MyRouter, options: [port: 4001])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -211,7 +213,7 @@ defmodule MyPlugTest do
 end
 ```
 
-### Available Plugs
+## Available plugs
 
 This project aims to ship with different plugs that can be re-used across applications:
 
@@ -227,7 +229,7 @@ This project aims to ship with different plugs that can be re-used across applic
 
 You can go into more details about each of them [in our docs](http://hexdocs.pm/plug/).
 
-### Helper modules
+## Helper modules
 
 Modules that can be used after you use `Plug.Router` or `Plug.Builder` to help development:
 
@@ -255,6 +257,6 @@ Check LICENSE file for more information.
   [pulls]: https://github.com/elixir-plug/plug/pulls
   [ML]: https://groups.google.com/group/elixir-lang-core
   [code-of-conduct]: https://github.com/elixir-lang/elixir/blob/master/CODE_OF_CONDUCT.md
-  [writing-docs]: http://elixir-lang.org/docs/stable/elixir/writing-documentation.html
+  [writing-docs]: https://elixir-lang.org/docs/stable/elixir/writing-documentation.html
   [IRC]: https://webchat.freenode.net/?channels=#elixir-lang
-  [freenode]: http://www.freenode.net
+  [freenode]: https://freenode.net/

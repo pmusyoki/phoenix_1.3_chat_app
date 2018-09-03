@@ -1,5 +1,48 @@
 # Changelog
 
+## v2.12.0 (2018-08-06)
+
+* Enhancements
+  * Configurable and extendable data-confirm behaviour
+  * Allow data-confirm with submit buttons
+  * Support ISO 8601 formatted strings for date and time values
+
+* Bug fixes
+  * Provide a default id of the field name for `@conn` based forms
+
+## v2.11.2 (2018-04-13)
+
+* Enhancements
+  * Support custom precision on time input
+
+* Bug fixes
+  * Do not raise when `:` is part of a path on link/button attributes
+
+## v2.11.1 (2018-03-20)
+
+* Enhancements
+  * Add `label/1`
+  * Copy the target attribute of the link in the generated JS form
+
+* Bug fixes
+  * Support any value that is html escapable in `radio_button`
+
+## v2.11.0 (2018-03-09)
+
+* Enhancements
+  * Add date, datetime-local and time input types
+  * Enable string keys to be usable with forms
+  * Support carriage return in `text_to_html`
+  * Add support for HTML5 boolean attributes to `content_tag` and `tag`
+  * Improve performance by relying on `html_safe_to_iodata/1`
+  * Protect against CSRF tokens leaking across hosts when the POST URL is dynamic
+  * Require `to` attribute in links and buttons to explicitly pass protocols as a separate option for safety reasons
+
+* Bug fixes
+  * Guarantee `input_name/2` always returns strings
+  * Improve handling of uncommon whitespace and null in `escape_javascript`
+  * Escape value attribute so it is never treated as a boolean
+
 ## v2.10.5 (2017-11-08)
 
 * Enhancements

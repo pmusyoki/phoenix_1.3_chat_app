@@ -9,6 +9,7 @@ defmodule Plug.Conn.Status do
     100 => "Continue",
     101 => "Switching Protocols",
     102 => "Processing",
+    103 => "Early Hints",
     200 => "OK",
     201 => "Created",
     202 => "Accepted",
@@ -82,7 +83,7 @@ defmodule Plug.Conn.Status do
     |> Enum.sort_by(&elem(&1, 0))
     |> Enum.map(fn {code, reason_phrase} ->
       atom = reason_phrase_to_atom.(reason_phrase)
-      "  * `#{inspect atom}` - #{code}\n"
+      "  * `#{inspect(atom)}` - #{code}\n"
     end)
   end
 
@@ -124,7 +125,24 @@ defmodule Plug.Conn.Status do
     def code(unquote(atom)), do: unquote(code)
   end
 
-  @spec reason_phrase(integer) :: String.t
+  @doc """
+  Returns the atom for given integer.
+
+  See `code/1` for the mapping.
+  """
+  @spec reason_atom(integer) :: atom
+  def reason_atom(code)
+
+  for {code, reason_phrase} <- Map.merge(statuses, custom_statuses) do
+    atom = reason_phrase_to_atom.(reason_phrase)
+    def reason_atom(unquote(code)), do: unquote(atom)
+  end
+
+  def reason_atom(code) do
+    raise ArgumentError, "unknown status code #{inspect(code)}"
+  end
+
+  @spec reason_phrase(integer) :: String.t()
   def reason_phrase(integer)
 
   for {code, phrase} <- Map.merge(statuses, custom_statuses) do
@@ -133,7 +151,7 @@ defmodule Plug.Conn.Status do
 
   def reason_phrase(code) do
     raise ArgumentError, """
-    unknown status code #{inspect code}
+    unknown status code #{inspect(code)}
 
     Custom codes can be defined in the configuration for the :plug application,
     under the :statuses key (which contains a map of status codes as keys and
@@ -144,7 +162,7 @@ defmodule Plug.Conn.Status do
     After defining the config for custom statuses, Plug must be recompiled for
     the changes to take place using:
 
-        MIX_ENV=dev mix deps.compile plug
+        MIX_ENV=dev mix deps.clean plug --build
 
     Doing this will allow the use of the integer status code 451 as
     well as the atom :unavailable_for_legal_reasons in many Plug functions.

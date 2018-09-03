@@ -47,7 +47,7 @@ defmodule Phoenix.PubSub do
   You can now use the functions in this module to subscribe
   and broadcast messages:
 
-      iex> PubSub.subscribe :my_pubsub, self(), "user:123"
+      iex> PubSub.subscribe :my_pubsub, "user:123"
       :ok
       iex> Process.info(self())[:messages]
       []
@@ -131,7 +131,7 @@ defmodule Phoenix.PubSub do
       `%Phoenix.Socket.Broadcast{}` events. The fastlane process is
       notified of a cached message instead of the normal subscriber.
       Fastlane handlers must implement `fastlane/1` callbacks which accepts
-      a `Phoenix.Socket.Broadcast` structs and returns a fastlaned format
+      a `Phoenix.Socket.Broadcast` struct and returns a fastlaned format
       for the handler. For example:
 
           PubSub.subscribe(MyApp.PubSub, "topic1",

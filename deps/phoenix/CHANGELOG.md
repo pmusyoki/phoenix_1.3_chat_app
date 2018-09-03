@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.3.4 (2018-08-06)
+
+* Bug Fixes
+  * [CodeReloader] Fix code reloader failing to properly report Elixir 1.6+ compiler errors
+
+## 1.3.3 (2018-06-15)
+
+* Enhancements
+  * [Router] cache pipeline compilation to improve performance
+
+* Bug Fixes
+  * [Phoenix.Router] Fix reraise deprecation warnings when using Plug 1.5 and above
+  * [Digester] Fix option parser warnings
+
+* Deprecations
+  * [Socket] deprecate via opton in channel/3 macro
+
+## 1.3.2 (2018-03-08)
+
+* Bug Fixes
+  * [CodeReloader] Fix error when running `phx.server` from umbrella root
+
+## 1.3.1 (2018-03-02)
+
+* Enhancements
+  * [Router] Raise on unknown `:only` and `:except` in `resources`.
+  * [Router] Include line numbers in generated routes for better reporting
+  * [Logger] Add parameter keep strategy to filter all parameters by default and selectively keep parameters
+  * [Token] Support `:infinity` for token max age
+  * [Presence] Generate `child_spec` for Elixir 1.5+ support
+
+* Bug Fixes
+  * [Transports.WebSocketSerializer] Do not encode `:join_ref` in v1 messages
+
 ## 1.3.0 (2017-07-28)
 
 See these [`1.2.x` to `1.3.x` upgrade instructions](https://gist.github.com/chrismccord/71ab10d433c98b714b75c886eff17357) to bring your existing apps up to speed.

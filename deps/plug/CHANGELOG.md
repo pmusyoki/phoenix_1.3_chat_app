@@ -1,478 +1,68 @@
 ## Changelog
 
-## v1.4.3
+## v1.6.2 (2018-08-04)
 
-* Bug fixes
-  * Also validate headers on `merge_resp_headers/2`
-  * Ensure `Plug.Upload` does not crash on termination
+  * Add `Plug.Test.put_peer_data/2`
+  * Support MFAs for cookie session secrets
+  * Allow `builder_opts()` to be passed to inner plugs in `Plug.Builder`
 
-## v1.4.2
-
-* Bug fixes
-  * Ensure Plug.Debugger does not fail to handle undefined function errors on nil
-
-## v1.4.1
-
-* Bug fixes
-  * Ensure body_params is properly filled during test
-
-## v1.4.0
-
-This version requires Elixir v1.3 and deprecates unsafe Plug.Crypto APIs.
+## v1.6.1 (2018-07-05)
 
 * Enhancements
-  * Log error if Cowboy discards headers due to protocol limits
-  * Add `Plug.Conn.read_part_headers/2` and `Plug.Conn.read_part_body/2` for built-in multipart parsing. This also adds support for multipart requests in tests
-  * Introduce `Plug.HTML.html_escape_to_iodata/1`
-  * Add HSTS "preload" flag to `Plug.SSL` options
-  * Add support for custom content-types in `Plug.Static`
-  * Support range request queries in `Plug.Static` to support resumable downloads and videos
-  * Allow custom key in `Plug.CSRFProtection`
-  * Raise `Plug.AlreadyChunkedError` when setting headers on chunked conn
-  * Perform `Exception.blame/3` and argument listing when possible on Plug.Debugger
-  * Add `:set_file` state in Plug.Conn, used by `send_file/3`
+  * Raise on unknown `Plug.SSL` cipher_suites
+  * Document Cowboy 2 usage with unix sockets
+  * Add `Plug.Debugger` banner for custom page details
+  * Do not crash error reporter for Cowboy 2 on undefined port
 
-* Bug fixes
-  * Fix issue with file uploads containing `;`s in filenames
-  * Ensure `plug.init/1` is called in `Plug.Router.forward`
-  * Do not send empty iodata chunks
-  * Do not convert throws and exits into errors in `Plug.Conn.WrapperError`
-  * Increase randomness in `Plug.Upload.path/0`
-
-## v1.3.5
-
-* Bug fixes
-  * Validate cookie headers
-
-## v1.3.4
-
-* Bug fixes
-  * Do not convert exits into errors
-
-## v1.3.3
-
-* Bug fixes
-  * Support improper lists, bitstrings and structs in safe_binary_to_term
-
-## v1.3.2
-
-* Bug fixes
-  * [Plug.Crypto] Provide safer deserialization mechanisms
-  * [Plug.Static] Properly handle null bytes
-
-## v1.3.1
+## v1.6.0 (2018-06-16)
 
 * Enhancements
-  * [Plug.Conn] Support arbitrary cookie attributes
-  * [Plug.SSL] Support tuple hosts in Plug.SSL
-  * [Plug.Static] Add ability to generate etags via a user defined function
+  * Add `Plug.Conn.inform/3` and `Plug.Conn.inform!/3` to support HTTP/2 informational responses
+  * Add `Plug.Conn.get_peer_data/1` to read client information such as address, port and ssl cert
+  * Add `Plug.Conn.get_http_protocol/1`
+  * Add `Plug.SSL.configure/1` to hold common SSL configuration and enable `reuse_sessions` and `secure_renegotiate` by default in adapters
+  * Add the `cipher_suite` option to provide secure defaults for a `:strong` or a `:compatible` TLS configuration.
+  * `Plug.SSL` skips HSTS by default on localhost. The list of hosts to exclude is configurable
 
-* Bug fixes
-  * [Plug.ErrorHandler] Do not unwrap errors wrapped in `Plug.Conn.WrapperError` when reraising
-
-## v1.3.0
-
-* Enhancements
-  * [Plug.Adapters.Cowboy] Support tuples with other than 2 elements in the adapter options
-  * [Plug.Adapters.Cowboy] Support controlling how multipart headers are parsed
-  * [Plug.Conn] Add the `:path_params` field to access path params apart from the `params` field
-  * [Plug.Conn.Status] Allow custom status codes to be configured and dynamically inflect their atom name
-  * [Plug.Debugger] Support content negotiation and defaults to Markdown when HTML cannot be served
-  * [Plug.Router] Extend `match/2` macros to accept a plug and options
-  * [Plug.Router] Make path parameters available in `conn.params`
-  * [Plug.Router] Add `:init_opts` option to `forward` macro for plug options
-  * [Plug.Router] Add `:assigns` option to router macros to assign values to `conn.assigns`
-
-* Bug fixes
-  * [Plug.Debugger] Do not show query parameters when debugging a page with bad query string
-  * [Plug.Parsers] Keep `body_params` unfetched if the content-type is allowed to pass through the parser
-
-## v1.2.2
-
-* Bug fix
-  * Do not generate AST with line -1 on OTP >= 19
-
-## v1.2.1
+## v1.5.1 (2018-05-17)
 
 * Enhancements
-  * Raise proper bad request and timeout exceptions on parse errors
-  * Support environment hosts on Plug.SSL
-  * Do not raise when nothing is plugged in a Plug.Builder
-
-## v1.2.0
-
-* Enhancements
-  * Introduce new error page
-  * Set default max connections to 16k instead of 1k
+  * Implement missing access behaviour for `Plug.Conn.Unfetched` to provide better error messages
+  * Add function plug forwarding to `Plug.Router`
+  * Support custom body readers in `Plug.Parsers`
+  * Introduce `merge_assigns/2` and `merge_private/2`
+  * Add `Plug.Conn.WrapperError.reraise/1` and `Plug.Conn.WrapperError.reraise/4` to deal with upcoming changes in Elixir v1.7
 
 * Bug fixes
-  * Ensure that `Plug.Conn`'s public API is consistent about not sending empty chunks
+  * Properly convert all list headers to map when using Cowboy 2
+  * Do not require certfile/keyfile with ssl if sni options are present
+
+## v1.5.0 (2018-03-09)
+
+* Enhancements
+  * Add `init_mode` to `Plug.Builder` for runtime initialization
+  * Allow passing MFA tuple to JSON decoder
+  * Allow `:log_error_on_incomplete_requests` to be disabled for Cowboy adapters
+  * Support Cowboy 2.2 with HTTP/2 support
+  * Optimize `Plug.RequestID` on machines with multiple cores
+  * Add `Plug.Conn.push/3` and `Plug.Conn.push!/3` to support HTTP/2 server push
+  * Add `Plug.Conn.request_url/1`
+  * Optimise `Plug.HTML.html_escape_to_iodata/1`
+  * Add `Plug.Router.match_path/1`
+  * Log on `Plug.SSL` redirects
+  * Allow `Plug.CSRFProtection` tokens to be generated and matched with host specific information
+  * Add `Plug.Conn.prepend_resp_headers/3`
+  * Add `Plug.Status.reason_atom/1`
+
+* Bug fixes
+  * Ensure CSRF token is not deleted if plug is called twice
+  * Do not fail on empty multipart body without boundary
+  * Do not decode empty query string pairs
+  * Consider both the connection protocol and `x-forwarded-proto` when redirecting on `Plug.SSL`
 
 * Deprecations
-  * Use the new `MIME` project instead of `Plug.MIME`
-  * Introduce safer algorithms in `Plug.MessageEncryptor` and `Plug.MessageVerifier`. The previous ones will be supported for a year allowing safe migration.
+  * Deprecate Plug.Conn's Collectable protocol implementation
 
-* Backwards incompatible changes
-  * Depend on Elixir ~> 1.2.3 or ~> 1.3
+## v1.4
 
-## v1.1.4
-
-* Bug fixes
-  * Fix `:only` and `:only_matching` which were not bypassing requests unless both were enabled
-
-* Enhancements
-  * Support reading of `conn.host` in `Plug.Test`
-  * Add normalization of `:dhfile` for Cowboy's SSL options
-  * Import error reporting and performance of `Plug.Static`
-
-## v1.1.3
-
-* Enhancements
-  * Add `:only_matching` option to `Plug.Static`
-
-* Bug fixes
-  * Return 400 from `Plug.Static` on invalid paths
-  * Ensure `Plug.Upload` does not error out on invalid access
-  * Ensure query string errors return 400
-
-## v1.1.2
-
-* Enhancements
-  * Raise on cookie overflow
-  * Log (with :debug level) when session cookie cannot be decoded
-
-* Bug fixes
-  * Ensure Plug.Parsers fail with request too large even when read_length > length
-
-## v1.1.1
-
-* Enhancements
-  * Add `:brotli` to `Plug.Static`
-
-* Bug fixes
-  * Fixed session verification when token may have the `--` separator
-
-## v1.1.0
-
-* Enhancements
-  * Only log errors if the exception has 5xx status code
-  * Warn when rendering non 5xx status code in Plug.Debugger
-  * Use URL safe variant on crypto (old tokens are still valid but new ones will be generated)
-  * Allow custom content-type when passing a map body in `Plug.Test`
-
-## v1.0.3
-
-* Enhancements
-  * Raise if new lines are used in header values
-
-* Bug fix
-  * Allow mime type lookup of uppercase extensions
-  * Do not validate uppercase headers in production to avoid performance hits
-  * Prevent Plug.Parsers from clobbering existing conn.params when part of it is unfetched
-
-## v1.0.2
-
-* Bug fix
-  * Ensure cookie store returns a Session ID so they can be dropped
-
-## v1.0.1
-
-* Enhancements
-  * Allow configuring all options supported by the underlying transport (i.e. cowboy)
-
-## v1.0.0
-
-* Enhancements
-  * Allow custom headers in `Plug.Static`
-
-* Bug fix
-  * No longer automatically assume "priv" for cert and key files for Cowboy SSL
-  * Raise if response has been sent more than once in test connection
-  * Raise when body is nil on `Plug.Conn.resp/3`
-  * Show more info and escape messages in `Plug.Debugger`
-
-## v0.14.0
-
-* Enhancements
-  * Support `:rewrite_on` on `Plug.SSL`
-  * Add `Plug.Conn.merge_resp_headers/2`
-
-* Bug fix
-  * Ensure message encryptor and verifier do not error on bad data
-
-## v0.13.1
-
-* Enhancements
-  * Add `conn.request_path`
-  * Raise if `put_session/3` is invoked when response is sent
-
-* Bug fixes
-  * Fix empty params being encoded into query string as '&'
-
-* Deprecations
-  * `Plug.Conn.full_path/2` is deprecated in favor of `conn.request_path`
-  * `Plug.Test.put_req_header/3` and `Plug.Test.delete_req_header/3` is deprecated in favor of similarly named functions in `Plug.Conn`
-
-## v0.13.0
-
-* Enhancements
-  * Raise if a header in upcase is given
-  * Store timestamps in sessions ETS table and document each entry format
-  * Allow private options when specifying routes in `Plug.Router`
-  * Allow the session to be cleared and ignored when an invalid CSRF token is given
-  * Allow log level to be configured in `Plug.Logger`
-  * Generate masked CSRF tokens to avoid BREACH attacks
-
-* Backwards incompatible changes
-  * `Plug.Logger` no longer sets the request id. Use `Plug.RequestId` instead
-
-## v0.12.2
-
-* Enhancements
-  * Add `Plug.HTML`
-
-* Bug fixes
-  * Do not crash on poorly encoded cookies
-  * Decode parameters before matching on the router
-
-## v0.12.1
-
-* Enhancements
-  * Add `Plug.SSL` with redirection from HTTP and HSTS support
-  * Remove the need for `:encrypt` option from `Plug.Session.COOKIE`. The need for encryption can be fully specified by passing `:encrypted_salt` option. This improvement is backwards compatible.
-
-* Bug fixes
-  * Ensure we don't parse body params if they were already parsed
-
-## v0.12.0
-
-* Enhancements
-  * Add `query_params` and `body_params` to keep query and body parameters apart from `params`
-  * Allow custom encoders when encoding query parameters
-  * Assert valid utf-8 on url encoded and multipart bodies
-
-* Bug fixes
-  * Use only body parameters when detecting method override
-  * Add Vary header when serving gzipped content in Plug.Static
-
-* Deprecations
-  * `fetch_params/2` is deprecated in favor of `fetch_query_params/2`
-
-## v0.11.3
-
-* Bug fixes
-  * Ensure test adapter reuses the given connection
-
-* Deprecations
-  * The `:headers` option in `Plug.Test.conn/4` is deprecated in favor of `put_req_header/3`
-
-## v0.11.2
-
-* Enhancements
-  * Add `:log_on_halt` option to `Plug.Builder` and `Plug.Router`
-  * Use raw files and delayed writes on upload
-
-* Bug fixes
-  * Do not read the whole request body at once
-  * Improve performance of url encoded params
-
-* Deprecations
-  * `Plug.Builder.compile/1` and `Plug.Builder.compile/2` are deprecated in favor of explicit `Plug.Builder.compile/3`
-
-## v0.11.1
-
-* Enhancements
-  * Allow Plug mimes to be configured via application environment
-  * Extend JSON parser to be compatible with all json compatible content types. This includes types with suffix `+json`
-  * Add `Plug.Conn.clear_session/1`
-
-* Bug fixes
-  * Do not require cowboy at compile time
-  * Also parse request bodies on DELETE requests
-
-## v0.11.0
-
-* Enhancements
-  * Add `Plug.Conn.async_assign/3` and `Plug.Conn.await_assign/3` to start and await for assigns asynchronously, mimic'ing `Task.async/1` and `Task.await/2` behaviour
-  * Add `Plug.Conn.WrapperError` to propagate an error with the connection for better debugging by either `Plug.Debugger` or `Plug.ErrorHandler`
-  * Add `Plug.Conn.update_resp_header/4` to update a response header or set its initial value if not present
-
-* Bug fixes
-  * Skip parsing of files when no filename is sent
-  * Fix how script_name are accumulated with multiple calls to `Plug.Router.forward/2`
-
-* Backwards incompatible changes
-  * `Plug.CSRFProtection` now uses a session to store tokens. Tokens are now generated on demand and can be accessed via `Plug.CSRFProtection.get_csrf_token/0`
-
-## v0.10.0
-
-* Enhancements
-  * Add `:only` option to `Plug.Static` to avoid all requests triggering file system queries
-  * Add ETag management to `Plug.Static` when requests to not contain a versioned query string
-  * Enforce atom or string keys in `Plug.Conn.put_session/3` and friends and normalize keys to strings
-
-* Bug fixes
-  * Add UTF-8 tag to debugger templates
-
-* Backwards incompatible changes
-  * `Plug.CSRFProtection` now uses a cookie instead of session and expects a `"_csrf_token"` parameter instead of `"csrf_token"`
-
-## v0.9.0
-
-* Enhancements
-  * Add `Plug.Conn.full_path/1`
-  * Add `Plug.CSRFProtection` that adds cross-forgery protection
-  * Add `Plug.ErrorHandler` that allows an error page to be sent on crashes (instead of a blank one)
-  * Support host option in `Plug.Router`
-
-* Backwards incompatible changes
-  * Add `Plug.Router.Utils.build_match/1` was renamed to `build_path_match/1`
-
-## v0.8.4
-
-* Bug fixes
-  * Clean up `{:plug_conn, :sent}` messages from listener inbox and ensure connection works accross processes
-
-* Deprecations
-  * Deprecate `recycle/2` in favor of `recycle_cookies` in Plug.Test
-
-## v0.8.3
-
-* Enhancements
-  * Use PKCS7 padding in MessageEncryptor (the same as OpenSSL)
-  * Add support for custom serializers in cookie session store
-  * Allow customization of key generation in cookie session store
-  * Automatically import `Plug.Conn` in Plug builder
-  * Render errors from Plug when using Ranch/Cowboy nicely
-  * Provide `Plug.Crypto.secure_compare/2` for comparing binaries
-  * Add `Plug.Debugger` for helpful pages whenever there is a failure during a request
-
-* Deprecations
-  * Deprecate `:accept` in favor of `:pass` in Plug.Parsers
-
-## v0.8.2
-
-* Enhancements
-  * Add `Plug.Conn.Utils.media_type/1` to provide media type parsing with wildcard support
-  * Do not print adapter data by default when inspecting the connection
-  * Allow plug_status to simplify the definition of plug aware exceptions
-  * Allow cache headers in `Plug.Static` to be turned off
-
-* Bug fix
-  * Support dots on header parameter parsing
-
-## v0.8.1
-
-* Enhancements
-  * Add a `Plug.Parsers.JSON` that expects a JSON decoder as argument
-
-* Bug fix
-  * Properly populate `params` field for test connections
-  * Fix `Plug.Logger` not reporting the proper path
-
-## v0.8.0
-
-* Enhancements
-  * Add `fetch_session/2`, `fetch_params/2` and `fetch_cookies/2` so they can be pluggable
-  * Raise an error message on invalid router indentifiers
-  * Add `put_status/2` and support atom status codes
-  * Add `secret_key_base` field to the connection
-
-* Backwards incompatible changes
-  * Add `encryption_salt` and `signing_salt` to the CookieStore and derive actual keys from `secret_key_base`
-
-## v0.7.0
-
-* Enhancements
-  * Support Elixir 1.0.0-rc1
-  * Support haltable pipelines with `Plug.Conn.halt/2`
-  * Ensure both Plug.Builder and Plug.Router's `call/2` are overridable
-
-* Bug fix
-  * Properly report times in Logger
-
-* Backwards incompatible changes
-  * Remove support for Plug wrappers
-
-## v0.6.0
-
-* Enhancements
-  * Add `Plug.Logger`
-  * Add `conn.peer` and `conn.remote_ip`
-  * Add `Plug.Conn.sendfile/5`
-  * Allow `call/2` from `Plug.Builder` to be overridable
-
-## v0.5.3
-
-* Enhancements
-  * Update to Cowboy v1.0.0
-  * Update mime types list
-  * Update to Elixir v0.15.0
-
-## v0.5.2
-
-* Enhancements
-  * Update to Elixir v0.14.3
-  * Cowboy adapter now returns `{:error,:eaddrinuse}` when port is already in use
-  * Add `Plug.Test.recycle/2` that copies relevant data between connections for future requests
-
-## v0.5.1
-
-* Enhancements
-  * Add ability to configure when `Plug.Parsers` raises `UnsupportedMediaTypeError`
-  * Add `Plug.Conn.Query.encode/1`
-  * Add `CookieStore` for session
-
-* Bug fixes
-  * Ensure plug parses content-type with CRLF as LWS
-
-## v0.5.0
-
-* Enhancements
-  * Update to Elixir v0.14.0
-  * Update Cowboy adapter to v0.10.0
-  * Add `Plug.Conn.read_body/2`
-
-* Backwards incompatible changes
-  * `Plug.Parsers` now expect `:length` instead of `:limit` and also accept `:read_length` and `:read_timeout`
-
-## v0.4.4
-
-* Enhancements
-  * Update to Elixir v0.13.3
-
-## v0.4.3
-
-* Enhancements
-  * Update to Elixir v0.13.2
-
-## v0.4.2
-
-* Enhancements
-  * Update to Elixir v0.13.1
-
-## v0.4.1
-
-* Enhancements
-  * Remove `:mime` dependency in favor of `Plug.MIME`
-  * Improve errors when Cowboy is not available
-  * First hex package release
-
-## v0.4.0
-
-* Enhancements
-  * Support `before_send/1` callbacks
-  * Add `Plug.Static`
-  * Allow iodata as the body
-  * Do not allow response headers to be set if the response was already sent
-  * Add `Plug.Conn.private` to be used as storage by libraries/frameworks
-  * Add `get_req_header` and `get_resp_header` for fetching request and response headers
-
-* Backwards incompatible changes
-  * `Plug.Connection` was removed in favor of `Plug.Conn`
-  * `Plug.Conn` is now a struct
-  * assigns, cookies, params and sessions have been converted to maps
-
-## v0.3.0
-
-* Definition of the Plug specification
+See [CHANGELOG in the v1.4 branch](https://github.com/elixir-plug/plug/blob/v1.4/CHANGELOG.md).

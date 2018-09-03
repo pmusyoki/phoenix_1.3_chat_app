@@ -1112,7 +1112,7 @@ defmodule Ecto.Schema do
         use Ecto.Schema
 
         embedded_schema do
-          field :name
+          field :title
         end
       end
 
@@ -1224,10 +1224,11 @@ defmodule Ecto.Schema do
   inside of it. Embeds have all the things regular schemas have.
 
   It is recommended to declare your `embeds_many/3` field with type
-  `{:array, :map}` and default value of `[]` at the database level.
-  In fact, Ecto will automatically translate `nil` values from the
-  database into empty lists for embeds many (this behaviour is specific
-  to `embeds_many/3` fields in order to mimic `has_many/3`).
+  `{:array, :map}` and a default of `[]` at the database level, or type `:jsonb`
+  with a default of `"[]"` if you are using PostgreSQL. In fact, Ecto will
+  automatically translate `nil` values from the database into empty lists for
+  embeds many (this behaviour is specific to `embeds_many/3` fields in order
+  to mimic `has_many/3`).
 
   The embedded may or may not have a primary key. Ecto use the primary keys
   to detect if an embed is being updated or not. If a primary is not present
@@ -1259,7 +1260,7 @@ defmodule Ecto.Schema do
         use Ecto.Schema
 
         embedded_schema do
-          field :name
+          field :title
         end
       end
 

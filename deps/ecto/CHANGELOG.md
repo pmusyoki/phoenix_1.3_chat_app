@@ -26,12 +26,56 @@ The query syntax also seen some improvements: map updates are supported in subqu
 
 Finally, the UPSERT support added on Ecto v2.1 is getting more improvements: the `{:constraint, constraint}` is now supported as conflict target and the `:returning` option was added to `Ecto.Repo.insert/2`, mirroring the behaviour of `insert_all`.
 
+## v2.2.10 (2018-04-08)
+
+### Enhancements
+
+  * [Ecto] Add .formatter.exs file
+  * [Ecto.Changeset] Add `:trim` option for `validate_required`
+  * [Ecto.Type] Support "hh:mm" format in `:time` field
+
+### Bug fixes
+
+  * [Ecto.Changeset] Fix `unsafe_validate_unique/3` for partially matching composite keys
+  * [Ecto.Query] Do not generate default ON on cross joins
+
+## v2.2.9 (2018-03-09)
+
+### Enhancements
+
+  * [Ecto.Adapters.MySQL] Raise clearer error when using where in on_conflict with MySQL
+  * [Ecto.Adapters.SQL] Document after_connect callbacks
+  * [Ecto.Repo] Improve docs for assoc with on_conflict
+  * [Ecto.Schema] Promote using :jsonb for Postgres for :embeds_many
+
+### Bug fixes
+
+  * [Ecto.Adapters.MySQL] Do not crash ecto.create/drop on log: false with mysql
+  * [Ecto.Adepters.Postgres] Prepend the schema "public" when referring to the schema_migrations table on ecto.dump
+  * [Ecto.Type] Do not raise when casting integer to NaiveDateTime
+
+## v2.2.8 (2018-01-13)
+
+### Enhancements
+
+  * [Ecto.Repo] Allow `ssl`, `timeout`, `pool_timeout` and `pool_size` to be given as URL parameter
+
+### Bug fixes
+
+  * [Ecto.Adapters.MySQL] Fix out of order parameters when issuing an update_all with join in MySQL
+  * [Ecto.Query] Fix a bug when a parameterized query is given as argument to join
+  * [Ecto.Query] Ensure a list of fields given to `select_merge: [...]` appends to the list of fields previously given in the select
+  * [Ecto.Query] Ensure fields loaded via `select_merge` are available during preloading
+  * [Ecto.Query] Show better error message on ambiguity between query and assoc on `:preload`
+  * [Ecto.Query] Allow virtual fields to be updated in subqueries
+  * [Ecto.Repo] Mark schemas returned from subqueries as loaded
+
 ## v2.2.7 (2017-12-03)
 
 ### Bug fixes
 
-  * Do not surface embeds if repo operation fails
-  * Raise if updating with struct on on_replace: :update
+  * [Ecto.Repo] Do not surface embeds if repo operation fails
+  * [Ecto.Schema] Raise if updating with struct on on_replace: :update
 
 ## v2.2.6 (2017-09-30)
 

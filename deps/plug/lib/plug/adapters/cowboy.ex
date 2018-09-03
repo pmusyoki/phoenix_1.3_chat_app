@@ -31,10 +31,17 @@ defmodule Plug.Adapters.Cowboy do
     * `:timeout` - Time in ms with no requests before Cowboy closes the connection.
       Defaults to 5000ms.
 
+    * `:log_error_on_incomplete_requests` - An error is logged when the response status code is 400 and
+      no headers are set in the request.
+      Defaults to true.
+
     * `:protocol_options` - Specifies remaining protocol options,
       see [Cowboy protocol docs](http://ninenines.eu/docs/en/cowboy/1.0/manual/cowboy_protocol/).
 
-  All other options are given to the underlying transport.
+  All other options are given to the underlying transport. When running
+  on HTTPS, any SSL configuration should be given directly to the adapter.
+  See `https/3` for an example and read `Plug.SSL.configure/1` to understand
+  about our SSL defaults.
   """
 
   require Logger
@@ -43,7 +50,7 @@ defmodule Plug.Adapters.Cowboy do
   @doc false
   def args(scheme, plug, opts, cowboy_options) do
     {cowboy_options, non_keyword_options} =
-      Enum.partition(cowboy_options, &is_tuple(&1) and tuple_size(&1) == 2)
+      enum_split_with(cowboy_options, &(is_tuple(&1) and tuple_size(&1) == 2))
 
     cowboy_options
     |> Keyword.put_new(:max_connections, 16_384)
@@ -54,7 +61,7 @@ defmodule Plug.Adapters.Cowboy do
   end
 
   @doc """
-  Run cowboy under http.
+  Runs cowboy under http.
 
   ## Example
 
@@ -65,24 +72,18 @@ defmodule Plug.Adapters.Cowboy do
       Plug.Adapters.Cowboy.shutdown MyPlug.HTTP
 
   """
-  @spec http(module(), Keyword.t, Keyword.t) ::
-        {:ok, pid} | {:error, :eaddrinuse} | {:error, term}
+  @spec http(module(), Keyword.t(), Keyword.t()) ::
+          {:ok, pid} | {:error, :eaddrinuse} | {:error, term}
   def http(plug, opts, cowboy_options \\ []) do
     run(:http, plug, opts, cowboy_options)
   end
 
   @doc """
-  Run cowboy under https.
+  Runs cowboy under https.
 
   Besides the options described in the module documentation,
-  this module also accepts all options defined in [the `ssl`
-  erlang module] (http://www.erlang.org/doc/man/ssl.html),
-  like keyfile, certfile, cacertfile, dhfile and others.
-
-  The certificate files can be given as a relative path.
-  For such, the `:otp_app` option must also be given and
-  certificates will be looked from the priv directory of
-  the given application.
+  this modules sets defaults and accepts all options defined
+  in `Plug.SSL.configure/2`.
 
   ## Example
 
@@ -99,8 +100,8 @@ defmodule Plug.Adapters.Cowboy do
       Plug.Adapters.Cowboy.shutdown MyPlug.HTTPS
 
   """
-  @spec https(module(), Keyword.t, Keyword.t) ::
-        {:ok, pid} | {:error, :eaddrinuse} | {:error, term}
+  @spec https(module(), Keyword.t(), Keyword.t()) ::
+          {:ok, pid} | {:error, :eaddrinuse} | {:error, term}
   def https(plug, opts, cowboy_options \\ []) do
     Application.ensure_all_started(:ssl)
     run(:https, plug, opts, cowboy_options)
@@ -113,39 +114,17 @@ defmodule Plug.Adapters.Cowboy do
     :cowboy.stop_listener(ref)
   end
 
-  @doc """
-  Returns a child spec to be supervised by your application.
-
-  This function returns the old child specs used by early OTP
-  and Elixir versions. See `child_spec/1` for the Elixir v1.5
-  based child specifications.
-
-  ## Example
-
-  Presuming your Plug module is named `MyRouter` you can add it to your
-  supervision tree like so using this function:
-
-      defmodule MyApp do
-        use Application
-
-        def start(_type, _args) do
-          import Supervisor.Spec
-
-          children = [
-            Plug.Adapters.Cowboy.child_spec(:http, MyRouter, [], [port: 4001])
-          ]
-
-          opts = [strategy: :one_for_one, name: MyApp.Supervisor]
-          Supervisor.start_link(children, opts)
-        end
-      end
-  """
+  @doc false
+  # TODO: Deprecate this once we require Elixir v1.5+
   def child_spec(scheme, plug, opts, cowboy_options \\ []) do
     [ref, nb_acceptors, trans_opts, proto_opts] = args(scheme, plug, opts, cowboy_options)
-    ranch_module = case scheme do
-      :http  -> :ranch_tcp
-      :https -> :ranch_ssl
-    end
+
+    ranch_module =
+      case scheme do
+        :http -> :ranch_tcp
+        :https -> :ranch_ssl
+      end
+
     :ranch.child_spec(ref, nb_acceptors, ranch_module, trans_opts, :cowboy_protocol, proto_opts)
   end
 
@@ -160,6 +139,9 @@ defmodule Plug.Adapters.Cowboy do
 
   ## Examples
 
+  Assuming your Plug module is named `MyApp` you can add it to your
+  supervision tree by using this function:
+
       children = [
         {Plug.Adapters.Cowboy, scheme: :http, plug: MyApp, options: [port: 4040]}
       ]
@@ -168,8 +150,11 @@ defmodule Plug.Adapters.Cowboy do
 
   """
   def child_spec(opts) do
+    :ok = verify_cowboy_version()
+
     scheme = Keyword.fetch!(opts, :scheme)
-    cowboy_opts = Keyword.fetch!(opts, :options)
+    cowboy_opts = Keyword.get(opts, :options, [])
+
     {plug, plug_opts} =
       case Keyword.fetch!(opts, :plug) do
         {_, _} = tuple -> tuple
@@ -179,8 +164,7 @@ defmodule Plug.Adapters.Cowboy do
     {id, start, restart, shutdown, type, modules} =
       child_spec(scheme, plug, plug_opts, cowboy_opts)
 
-    %{id: id, start: start, restart: restart,
-      shutdown: shutdown, type: type, modules: modules}
+    %{id: id, start: start, restart: restart, shutdown: shutdown, type: type, modules: modules}
   end
 
   ## Helpers
@@ -190,24 +174,27 @@ defmodule Plug.Adapters.Cowboy do
   defp run(scheme, plug, opts, cowboy_options) do
     case Application.ensure_all_started(:cowboy) do
       {:ok, _} ->
-        :ok
+        verify_cowboy_version()
+
       {:error, {:cowboy, _}} ->
-        raise "could not start the cowboy application. Please ensure it is listed " <>
-              "as a dependency both in deps and application in your mix.exs"
+        raise "could not start the Cowboy application. Please ensure it is listed as a dependency in your mix.exs"
     end
+
     apply(:cowboy, :"start_#{scheme}", args(scheme, plug, opts, cowboy_options))
   end
 
   defp normalize_cowboy_options(cowboy_options, :http) do
-    Keyword.put_new cowboy_options, :port, 4000
+    Keyword.put_new(cowboy_options, :port, 4000)
   end
 
   defp normalize_cowboy_options(cowboy_options, :https) do
-    assert_ssl_options(cowboy_options)
-    cowboy_options = Keyword.put_new cowboy_options, :port, 4040
-    cowboy_options = Enum.reduce [:keyfile, :certfile, :cacertfile, :dhfile], cowboy_options, &normalize_ssl_file(&1, &2)
-    cowboy_options = Enum.reduce [:password], cowboy_options, &to_charlist(&2, &1)
     cowboy_options
+    |> Keyword.put_new(:port, 4040)
+    |> Plug.SSL.configure()
+    |> case do
+      {:ok, options} -> options
+      {:error, message} -> fail(message)
+    end
   end
 
   defp to_args(opts, non_keyword_opts) do
@@ -216,34 +203,68 @@ defmodule Plug.Adapters.Cowboy do
     {dispatch, opts} = Keyword.pop(opts, :dispatch)
     {acceptors, opts} = Keyword.pop(opts, :acceptors, 100)
     {protocol_options, opts} = Keyword.pop(opts, :protocol_options, [])
+    {log_request_errors, opts} = Keyword.pop(opts, :log_error_on_incomplete_requests, true)
 
     dispatch = :cowboy_router.compile(dispatch)
     {extra_options, transport_options} = Keyword.split(opts, @protocol_options)
-    protocol_options = [env: [dispatch: dispatch]] ++ add_on_response(protocol_options) ++ extra_options
+
+    protocol_options =
+      [env: [dispatch: dispatch]] ++
+        add_on_response(log_request_errors, protocol_options) ++ extra_options
 
     [ref, acceptors, non_keyword_opts ++ transport_options, protocol_options]
   end
 
-  defp add_on_response(protocol_options) do
-    case Keyword.pop(protocol_options, :onresponse) do
-      {nil, _} ->
-        [onresponse: &onresponse/4] ++ protocol_options
-      {onresponse, protocol_options} ->
-        [onresponse: fn status, headers, body, request ->
-          onresponse(status, headers, body, request)
-          onresponse.(status, headers, body, request)
-         end] ++ protocol_options
+  defp add_on_response(log_request_errors, protocol_options) do
+    {provided_onresponse, protocol_options} = Keyword.pop(protocol_options, :onresponse)
+    add_on_response(log_request_errors, provided_onresponse, protocol_options)
+  end
+
+  defp add_on_response(false, nil, protocol_options) do
+    protocol_options
+  end
+
+  defp add_on_response(false, fun, protocol_options) when is_function(fun) do
+    [onresponse: fun] ++ protocol_options
+  end
+
+  defp add_on_response(false, {mod, fun}, protocol_options) when is_atom(mod) and is_atom(fun) do
+    onresponse = fn status, headers, body, request ->
+      apply(mod, fun, [status, headers, body, request])
     end
+
+    [onresponse: onresponse] ++ protocol_options
+  end
+
+  defp add_on_response(true, nil, protocol_options) do
+    [onresponse: &onresponse/4] ++ protocol_options
+  end
+
+  defp add_on_response(true, fun, protocol_options) when is_function(fun) do
+    onresponse = fn status, headers, body, request ->
+      onresponse(status, headers, body, request)
+      fun.(status, headers, body, request)
+    end
+
+    [onresponse: onresponse] ++ protocol_options
+  end
+
+  defp add_on_response(true, {mod, fun}, protocol_options) when is_atom(mod) and is_atom(fun) do
+    onresponse = fn status, headers, body, request ->
+      onresponse(status, headers, body, request)
+      apply(mod, fun, [status, headers, body, request])
+    end
+
+    [onresponse: onresponse] ++ protocol_options
   end
 
   defp onresponse(status, _headers, _body, request) do
     if status == 400 and empty_headers?(request) do
-      Logger.error """
-      Cowboy returned 400 and there are no headers in the connection.
+      Logger.error("""
+      Cowboy returned 400 because it was unable to parse the request headers.
 
-      This may happen if Cowboy is unable to parse the request headers,
-      for example, because there are too many headers or the header name
-      or value are too large (such as a large cookie).
+      This may happen because there are no headers, or there are too many headers
+      or the header name or value are too large (such as a large cookie).
 
       You can customize those values when configuring your http/https
       server. The configuration option and default values are shown below:
@@ -251,10 +272,12 @@ defmodule Plug.Adapters.Cowboy do
           protocol_options: [
             max_header_name_length: 64,
             max_header_value_length: 4096,
-            max_headers: 100
+            max_headers: 100,
+            max_request_line_length: 8096
           ]
-      """
+      """)
     end
+
     request
   end
 
@@ -264,7 +287,7 @@ defmodule Plug.Adapters.Cowboy do
   end
 
   defp build_ref(plug, scheme) do
-    Module.concat(plug, scheme |> to_string |> String.upcase)
+    Module.concat(plug, scheme |> to_string |> String.upcase())
   end
 
   defp dispatch_for(plug, opts) do
@@ -272,56 +295,23 @@ defmodule Plug.Adapters.Cowboy do
     [{:_, [{:_, Plug.Adapters.Cowboy.Handler, {plug, opts}}]}]
   end
 
-  defp normalize_ssl_file(key, cowboy_options) do
-    value = cowboy_options[key]
-
-    cond do
-      is_nil(value) ->
-        cowboy_options
-      Path.type(value) == :absolute ->
-        put_ssl_file cowboy_options, key, value
-      true ->
-        put_ssl_file cowboy_options, key, Path.expand(value, otp_app(cowboy_options))
-    end
-  end
-
-  defp assert_ssl_options(cowboy_options) do
-    unless Keyword.has_key?(cowboy_options, :key) or
-           Keyword.has_key?(cowboy_options, :keyfile) do
-      fail "missing option :key/:keyfile"
-    end
-    unless Keyword.has_key?(cowboy_options, :cert) or
-           Keyword.has_key?(cowboy_options, :certfile) do
-      fail "missing option :cert/:certfile"
-    end
-  end
-
-  defp put_ssl_file(cowboy_options, key, value) do
-    value = to_charlist(value)
-    unless File.exists?(value) do
-      fail "the file #{value} required by SSL's #{inspect key} either does not exist, or the application does not have permission to access it"
-    end
-    Keyword.put(cowboy_options, key, value)
-  end
-
-  defp otp_app(cowboy_options) do
-    if app = cowboy_options[:otp_app] do
-      Application.app_dir(app)
-    else
-      fail "to use a relative certificate with https, the :otp_app " <>
-           "option needs to be given to the adapter"
-    end
-  end
-
-  defp to_charlist(cowboy_options, key) do
-    if value = cowboy_options[key] do
-      Keyword.put cowboy_options, key, to_charlist(value)
-    else
-      cowboy_options
-    end
-  end
-
   defp fail(message) do
-    raise ArgumentError, message: "could not start Cowboy adapter, " <> message
+    raise ArgumentError, "could not start Cowboy adapter, " <> message
   end
+
+  defp verify_cowboy_version do
+    case Application.spec(:cowboy, :vsn) do
+      '1.' ++ _ ->
+        :ok
+
+      vsn ->
+        raise "you are using Plug.Adapters.Cowboy (for Cowboy 1) but your current Cowboy " <>
+                "version is #{vsn}. Please update your mix.exs file accordingly"
+    end
+  end
+
+  # TODO: Remove once we depend on Elixir ~> 1.4.
+  Code.ensure_loaded(Enum)
+  split_with = if function_exported?(Enum, :split_with, 2), do: :split_with, else: :partition
+  defp enum_split_with(enum, fun), do: apply(Enum, unquote(split_with), [enum, fun])
 end

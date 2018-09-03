@@ -726,6 +726,8 @@ defmodule Ecto.Type do
 
   ## Time
 
+  defp cast_time(<<hour::2-bytes, ?:, minute::2-bytes>>),
+    do: cast_time(to_i(hour), to_i(minute), 0, nil)
   defp cast_time(binary) when is_binary(binary) do
     case Time.from_iso8601(binary) do
       {:ok, _} = ok -> ok
@@ -801,6 +803,9 @@ defmodule Ecto.Type do
         {:error, _} -> :error
       end
     end
+  end
+  defp cast_naive_datetime(_) do
+    :error
   end
 
   defp dump_naive_datetime(%NaiveDateTime{year: year, month: month, day: day,

@@ -36,6 +36,8 @@ defmodule Plug.Builder do
   When used, the following options are accepted by `Plug.Builder`:
 
     * `:log_on_halt` - accepts the level to log whenever the request is halted
+    * `:init_mode` - the environment to initialize the plug's options, one of
+      `:compile` or `:runtime`. Defaults `:compile`.
 
   ## Plug behaviour
 
@@ -72,8 +74,9 @@ defmodule Plug.Builder do
         plug Plug.Head
 
         def call(conn, opts) do
-          super(conn, opts) # calls Plug.Logger and Plug.Head
-          assign(conn, :called_all_plugs, true)
+          conn
+          |> super(opts) # calls Plug.Logger and Plug.Head
+          |> assign(:called_all_plugs, true)
         end
       end
 
@@ -112,10 +115,10 @@ defmodule Plug.Builder do
         plug_builder_call(conn, opts)
       end
 
-      defoverridable [init: 1, call: 2]
+      defoverridable init: 1, call: 2
 
       import Plug.Conn
-      import Plug.Builder, only: [plug: 1, plug: 2]
+      import Plug.Builder, only: [plug: 1, plug: 2, builder_opts: 0]
 
       Module.register_attribute(__MODULE__, :plugs, accumulate: true)
       @before_compile Plug.Builder
@@ -124,14 +127,41 @@ defmodule Plug.Builder do
 
   @doc false
   defmacro __before_compile__(env) do
-    plugs        = Module.get_attribute(env.module, :plugs)
-    builder_opts = Module.get_attribute(env.module, :plug_builder_opts)
+    plugs = Module.get_attribute(env.module, :plugs)
 
+    plugs =
+      if builder_ref = get_plug_builder_ref(env.module) do
+        traverse(plugs, builder_ref)
+      else
+        plugs
+      end
+
+    builder_opts = Module.get_attribute(env.module, :plug_builder_opts)
     {conn, body} = Plug.Builder.compile(env, plugs, builder_opts)
 
     quote do
-      defp plug_builder_call(unquote(conn), _), do: unquote(body)
+      defp plug_builder_call(unquote(conn), opts), do: unquote(body)
     end
+  end
+
+  defp traverse(tuple, ref) when is_tuple(tuple) do
+    tuple |> Tuple.to_list() |> traverse(ref) |> List.to_tuple()
+  end
+
+  defp traverse(map, ref) when is_map(map) do
+    map |> Map.to_list() |> traverse(ref) |> Map.new()
+  end
+
+  defp traverse(list, ref) when is_list(list) do
+    Enum.map(list, &traverse(&1, ref))
+  end
+
+  defp traverse(ref, ref) do
+    {:unquote, [], [quote(do: opts)]}
+  end
+
+  defp traverse(term, _ref) do
+    term
   end
 
   @doc """
@@ -151,6 +181,67 @@ defmodule Plug.Builder do
     quote do
       @plugs {unquote(plug), unquote(opts), true}
     end
+  end
+
+  @doc """
+  Annotates a plug will receive the options given
+  to the current module itself as arguments.
+
+  Imagine the following plug:
+
+      defmodule MyPlug do
+        use Plug.Builder
+
+        plug :inspect_opts, builder_opts()
+
+        defp inspect_opts(conn, opts) do
+          IO.inspect(opts)
+          conn
+        end
+      end
+
+  When plugged as:
+
+      plug MyPlug, custom: :options
+
+  It will print `[custom: :options]` as the builder options
+  were passed to the inner plug.
+
+  Note you only pass `builder_opts()` to **function plugs**.
+  You cannot use `builder_opts()` with module plugs because
+  their options are evaluated at compile time. If you need
+  to pass `builder_opts()` to a module plug, you can wrap
+  the module plug in function. To be precise, do not do this:
+
+      plug Plug.Parsers, builder_opts()
+
+  Instead do this:
+
+      plug :custom_plug_parsers, builder_opts()
+
+      defp custom_plug_parsers(conn, opts) do
+        Plug.Parsers.call(conn, Plug.Parsers.init(opts))
+      end
+  """
+  defmacro builder_opts() do
+    quote do
+      Plug.Builder.__builder_opts__(__MODULE__)
+    end
+  end
+
+  @doc false
+  def __builder_opts__(module) do
+    get_plug_builder_ref(module) || generate_plug_builder_ref(module)
+  end
+
+  defp get_plug_builder_ref(module) do
+    Module.get_attribute(module, :plug_builder_ref)
+  end
+
+  defp generate_plug_builder_ref(module) do
+    ref = make_ref()
+    Module.put_attribute(module, :plug_builder_ref, ref)
+    ref
   end
 
   @doc """
@@ -175,32 +266,58 @@ defmodule Plug.Builder do
       ], [])
 
   """
-  @spec compile(Macro.Env.t, [{plug, Plug.opts, Macro.t}], Keyword.t) :: {Macro.t, Macro.t}
+  @spec compile(Macro.Env.t(), [{plug, Plug.opts(), Macro.t()}], Keyword.t()) ::
+          {Macro.t(), Macro.t()}
   def compile(env, pipeline, builder_opts) do
     conn = quote do: conn
-    {conn, Enum.reduce(pipeline, conn, &quote_plug(init_plug(&1), &2, env, builder_opts))}
+    init_mode = builder_opts[:init_mode] || :compile
+
+    unless init_mode in [:compile, :runtime] do
+      raise ArgumentError, """
+      invalid :init_mode when compiling #{inspect(env.module)}.
+
+      Supported values include :compile or :runtime. Got: #{inspect(init_mode)}
+      """
+    end
+
+    ast =
+      Enum.reduce(pipeline, conn, fn {plug, opts, guards}, acc ->
+        {plug, opts, guards}
+        |> init_plug(init_mode)
+        |> quote_plug(acc, env, builder_opts)
+      end)
+
+    {conn, ast}
   end
 
-  # Initializes the options of a plug at compile time.
-  defp init_plug({plug, opts, guards}) do
+  # Initializes the options of a plug in the configured init_mode.
+  defp init_plug({plug, opts, guards}, init_mode) do
     case Atom.to_charlist(plug) do
-      ~c"Elixir." ++ _ -> init_module_plug(plug, opts, guards)
-      _                -> init_fun_plug(plug, opts, guards)
+      ~c"Elixir." ++ _ -> init_module_plug(plug, opts, guards, init_mode)
+      _ -> init_fun_plug(plug, opts, guards)
     end
   end
 
-  defp init_module_plug(plug, opts, guards) do
+  defp init_module_plug(plug, opts, guards, :compile) do
     initialized_opts = plug.init(opts)
 
     if function_exported?(plug, :call, 2) do
-      {:module, plug, initialized_opts, guards}
+      {:module, plug, escape(initialized_opts), guards}
     else
-      raise ArgumentError, message: "#{inspect plug} plug must implement call/2"
+      raise ArgumentError, message: "#{inspect(plug)} plug must implement call/2"
     end
   end
 
+  defp init_module_plug(plug, opts, guards, :runtime) do
+    {:module, plug, quote(do: unquote(plug).init(unquote(escape(opts)))), guards}
+  end
+
   defp init_fun_plug(plug, opts, guards) do
-    {:function, plug, opts, guards}
+    {:function, plug, escape(opts), guards}
+  end
+
+  defp escape(opts) do
+    Macro.escape(opts, unquote: true)
   end
 
   # `acc` is a series of nested plug calls in the form of
@@ -209,10 +326,11 @@ defmodule Plug.Builder do
   defp quote_plug({plug_type, plug, opts, guards}, acc, env, builder_opts) do
     call = quote_plug_call(plug_type, plug, opts)
 
-    error_message = case plug_type do
-      :module   -> "expected #{inspect plug}.call/2 to return a Plug.Conn"
-      :function -> "expected #{plug}/2 to return a Plug.Conn"
-    end <> ", all plugs must receive a connection (conn) and return a connection"
+    error_message =
+      case plug_type do
+        :module -> "expected #{inspect(plug)}.call/2 to return a Plug.Conn"
+        :function -> "expected #{plug}/2 to return a Plug.Conn"
+      end <> ", all plugs must receive a connection (conn) and return a connection"
 
     {fun, meta, [arg, [do: clauses]]} =
       quote do
@@ -220,8 +338,10 @@ defmodule Plug.Builder do
           %Plug.Conn{halted: true} = conn ->
             unquote(log_halt(plug_type, plug, env, builder_opts))
             conn
+
           %Plug.Conn{} = conn ->
             unquote(acc)
+
           _ ->
             raise unquote(error_message)
         end
@@ -242,11 +362,11 @@ defmodule Plug.Builder do
   end
 
   defp quote_plug_call(:function, plug, opts) do
-    quote do: unquote(plug)(conn, unquote(Macro.escape(opts)))
+    quote do: unquote(plug)(conn, unquote(opts))
   end
 
   defp quote_plug_call(:module, plug, opts) do
-    quote do: unquote(plug).call(conn, unquote(Macro.escape(opts)))
+    quote do: unquote(plug).call(conn, unquote(opts))
   end
 
   defp compile_guards(call, true) do
@@ -264,10 +384,11 @@ defmodule Plug.Builder do
 
   defp log_halt(plug_type, plug, env, builder_opts) do
     if level = builder_opts[:log_on_halt] do
-      message = case plug_type do
-        :module   -> "#{inspect env.module} halted in #{inspect plug}.call/2"
-        :function -> "#{inspect env.module} halted in #{inspect plug}/2"
-      end
+      message =
+        case plug_type do
+          :module -> "#{inspect(env.module)} halted in #{inspect(plug)}.call/2"
+          :function -> "#{inspect(env.module)} halted in #{inspect(plug)}/2"
+        end
 
       quote do
         require Logger

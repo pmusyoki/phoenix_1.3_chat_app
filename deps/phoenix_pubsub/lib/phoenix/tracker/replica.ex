@@ -3,13 +3,13 @@ defmodule Phoenix.Tracker.Replica do
   alias Phoenix.Tracker.Replica
 
   @type name :: String.t
-  @type vsn :: term
+  @type vsn :: integer
   @type replica_ref :: {name, vsn}
 
   @type t :: %Replica{
     name: name,
     vsn: vsn,
-    last_heartbeat_at: pos_integer,
+    last_heartbeat_at: pos_integer | nil,
     status: :up | :down | :permdown
   }
 
@@ -77,9 +77,9 @@ defmodule Phoenix.Tracker.Replica do
     %Replica{replica | last_heartbeat_at: now_ms()}
   end
 
-  defp now_ms, do: System.system_time(:milli_seconds)
+  defp now_ms, do: System.system_time(:millisecond)
 
   defp unique_vsn do
-    System.system_time(:micro_seconds) + System.unique_integer([:positive])
+    System.system_time(:microsecond) + System.unique_integer([:positive])
   end
 end

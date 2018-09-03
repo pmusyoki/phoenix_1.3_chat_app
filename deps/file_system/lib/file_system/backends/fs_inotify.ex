@@ -3,7 +3,7 @@ require Logger
 defmodule FileSystem.Backends.FSInotify do
   @moduledoc """
   This file is a fork from https://github.com/synrc/fs.
-  FileSysetm backend for linux and freebsd, a GenServer receive data from Port, parse event
+  FileSysetm backend for linux, freebsd and openbsd, a GenServer receive data from Port, parse event
   and send it to the worker process.
   Need `inotify-tools` installed to use this backend.
 
@@ -37,11 +37,11 @@ defmodule FileSystem.Backends.FSInotify do
   end
 
   def supported_systems do
-    [{:unix, :linux}, {:unix, :freebsd}]
+    [{:unix, :linux}, {:unix, :freebsd}, {:unix, :openbsd}]
   end
 
   def known_events do
-    [:created, :deleted, :renamed, :closed, :modified, :isdir, :attribute, :undefined]
+    [:created, :deleted, :closed, :modified, :isdir, :attribute, :undefined]
   end
 
   defp executable_path do
@@ -74,8 +74,8 @@ defmodule FileSystem.Backends.FSInotify do
       {dirs, rest} ->
         format = ["%w", "%e", "%f"] |> Enum.join(@sep_char) |> to_charlist
         args = [
-          '-e', 'modify', '-e', 'close_write', '-e', 'moved_to', '-e', 'create',
-          '-e', 'delete', '-e', 'attrib', '--format', format, '--quiet', '-m', '-r'
+          '-e', 'modify', '-e', 'close_write', '-e', 'moved_to', '-e', 'moved_from',
+          '-e', 'create', '-e', 'delete', '-e', 'attrib', '--format', format, '--quiet', '-m', '-r'
           | dirs |> Enum.map(&Path.absname/1) |> Enum.map(&to_charlist/1)
         ]
         parse_options(rest, args)
@@ -106,7 +106,7 @@ defmodule FileSystem.Backends.FSInotify do
     {worker_pid, rest} = Keyword.pop(args, :worker_pid)
     case parse_options(rest) do
       {:ok, port_args} ->
-        bash_args = ['-c', '#{executable_path()} $0 $@ & PID=$!; read a; kill $PID']
+        bash_args = ['-c', '#{executable_path()} $0 $@ & PID=$!; read a; kill -KILL $PID']
         port = Port.open(
           {:spawn_executable, '/bin/sh'},
           [:stream, :exit_status, {:line, 16384}, {:args, bash_args ++ port_args}, {:cd, System.tmp_dir!()}]
@@ -149,12 +149,13 @@ defmodule FileSystem.Backends.FSInotify do
   end
 
   defp convert_flag("CREATE"),      do: :created
+  defp convert_flag("MOVED_TO"),    do: :created
   defp convert_flag("DELETE"),      do: :deleted
+  defp convert_flag("MOVED_FROM"),  do: :deleted
   defp convert_flag("ISDIR"),       do: :isdir
   defp convert_flag("MODIFY"),      do: :modified
   defp convert_flag("CLOSE_WRITE"), do: :modified
   defp convert_flag("CLOSE"),       do: :closed
-  defp convert_flag("MOVED_TO"),    do: :renamed
   defp convert_flag("ATTRIB"),      do: :attribute
   defp convert_flag(_),             do: :undefined
 end

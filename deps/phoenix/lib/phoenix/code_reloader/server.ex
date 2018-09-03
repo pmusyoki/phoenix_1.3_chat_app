@@ -24,18 +24,21 @@ defmodule Phoenix.CodeReloader.Server do
   end
 
   def handle_call(:check_symlinks, _from, checked?) do
-    if not checked? and Code.ensure_loaded?(Mix.Project) do
-      build_path = Mix.Project.build_path()
-      symlink = Path.join(Path.dirname(build_path), "__phoenix__")
+    if not checked? and Code.ensure_loaded?(Mix.Project) and not Mix.Project.umbrella? do
+      priv_path = "#{Mix.Project.app_path}/priv"
 
-      case File.ln_s(build_path, symlink) do
-        :ok ->
-          File.rm(symlink)
-        {:error, :eexist} ->
-          File.rm(symlink)
+      case :file.read_link(priv_path) do
+        {:ok, _} ->
+          :ok
+
         {:error, _} ->
-          Logger.warn "Phoenix is unable to create symlinks. Phoenix' code reloader will run " <>
-                      "considerably faster if symlinks are allowed." <> os_symlink(:os.type)
+          if can_symlink?() do
+            File.rm_rf(priv_path)
+            Mix.Project.build_structure
+          else
+            Logger.warn "Phoenix is unable to create symlinks. Phoenix' code reloader will run " <>
+                        "considerably faster if symlinks are allowed." <> os_symlink(:os.type)
+          end
       end
     end
 
@@ -78,9 +81,29 @@ defmodule Phoenix.CodeReloader.Server do
   end
 
   defp os_symlink({:win32, _}),
-    do: " On Windows, such can be done by starting the shell with \"Run as Administrator\"."
+    do: " On Windows, the lack of symlinks may even cause empty assets to be served. " <>
+        "Luckily, you can address this issue by starting your Windows terminal at least " <>
+        "once with \"Run as Administrator\" and then running your Phoenix application."
   defp os_symlink(_),
     do: ""
+
+  defp can_symlink?() do
+    build_path = Mix.Project.build_path()
+    symlink = Path.join(Path.dirname(build_path), "__phoenix__")
+
+    case File.ln_s(build_path, symlink) do
+      :ok ->
+        File.rm_rf(symlink)
+        true
+
+      {:error, :eexist} ->
+        File.rm_rf(symlink)
+        true
+
+      {:error, _} ->
+        false
+    end
+  end
 
   defp load_backup(mod) do
     mod
@@ -141,6 +164,7 @@ defmodule Phoenix.CodeReloader.Server do
     case Mix.Utils.extract_stale(configs, manifests) do
       [] ->
         mix_compile(compilers)
+
       files ->
         raise """
         could not compile application: #{Mix.Project.config[:app]}.
@@ -164,14 +188,22 @@ defmodule Phoenix.CodeReloader.Server do
     # We call build_structure mostly for Windows so new
     # assets in priv are copied to the build directory.
     Mix.Project.build_structure
-    res = Enum.map(compilers, &Mix.Task.run("compile.#{&1}", []))
+    results = Enum.map(compilers, &Mix.Task.run("compile.#{&1}", []))
 
-    if :ok in res && consolidate_protocols?() do
-      Mix.Task.reenable("compile.protocols")
-      Mix.Task.run("compile.protocols", [])
+    # Results are either {:ok, _} | {:error, _}, {:noop, _} or
+    # :ok | :error | :noop. So we use proplists to do the unwraping.
+    cond do
+      :proplists.get_value(:error, results, false) ->
+        exit({:shutdown, 1})
+
+      :proplists.get_value(:ok, results, false) && consolidate_protocols?() ->
+        Mix.Task.reenable("compile.protocols")
+        Mix.Task.run("compile.protocols", [])
+        :ok
+
+      true ->
+        :ok
     end
-
-    res
   end
 
   defp consolidate_protocols? do
