@@ -22,7 +22,7 @@ defmodule ChatWeb do
       use Phoenix.Controller, namespace: ChatWeb
       import Plug.Conn
       import ChatWeb.Router.Helpers
-      #import ChatWeb.Gettext
+      import ChatWeb.Gettext
     end
   end
 
@@ -39,7 +39,7 @@ defmodule ChatWeb do
 
       import ChatWeb.Router.Helpers
       import ChatWeb.ErrorHelpers
-      #import ChatWeb.Gettext
+      import ChatWeb.Gettext
     end
   end
 
@@ -54,7 +54,7 @@ defmodule ChatWeb do
   def channel do
     quote do
       use Phoenix.Channel
-      #import ChatWeb.Gettext
+      import ChatWeb.Gettext
     end
   end
 
