@@ -33,7 +33,7 @@ defmodule ChatWeb.ChatRoomChannel do
       %{
         name: msg.name,
         message: msg.message,
-        published_at: msg.published_at
+        published_at:  msg.published_at |> Timex.format("{relative}", :relative)
       }) end)
     {:noreply, socket}
   end

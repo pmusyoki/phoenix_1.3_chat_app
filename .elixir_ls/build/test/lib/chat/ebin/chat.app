@@ -1,5 +1,5 @@
 {application,chat,
-             [{applications,[kernel,stdlib,elixir,logger,runtime_tools,
+             [{applications,[kernel,stdlib,elixir,logger,runtime_tools,timex,
                              gettext,phoenix_pubsub,cowboy,phoenix_html,
                              phoenix,postgrex,phoenix_ecto]},
               {description,"chat"},
